@@ -17,7 +17,7 @@ function show ()
     apt-cache search $1
 }
 
-function giveme ()
+function install ()
 {
     sudo apt-get install "$@"
 }
@@ -64,10 +64,12 @@ function f()
 # surpisingly helpful..
 function up()
 {
+    local dir=$''
     for i in `seq 1 $1`;
     do
-        cd ../
+        dir=$dir+$'../'
     done;
+    cd $dir
 }
 
 # Required for the prompt to show git status
@@ -76,4 +78,14 @@ function parse_git_dirty {
 }
 function parse_git_branch {
 git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e "s/* \(.*\)/[\1$(parse_git_dirty)]/"
+}
+
+waitfor() {
+  local path=$1
+  echo "Waiting for $path ..."
+  while [ ! -e "$path" ]; do
+    sleep 1
+  done
+  shift
+  "$@"
 }

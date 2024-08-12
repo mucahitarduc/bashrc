@@ -1,5 +1,5 @@
 # Cute shell shortcuts
-alias ls='ls --sort=extension --color=auto'
+alias ls='ls --color=auto'
 alias ll='ls -lh'
 alias lal='ls -alh'
 alias la='ls -A'
@@ -26,26 +26,12 @@ fi
 
 # This one is to take care of make
 # Give me a nice, distinguishable make output
-alias make='clear && make'
+#alias make='clear && make'
 alias m='make'
-
-# Some more, to avoid mistakes
-alias rm='rm -i'
-alias cp='cp -i'
-alias mv='mv -i'
-
-# Git Commands
-# Add and Commit are used as functions
-alias gpo='git push origin master'
-alias gp='git pull'
-alias gs='git status'
-alias gd='git diff'
-alias gr='git reflog'
-alias glf='git ls-files'
 
 # Useful for C/C++ work
 # R for recursive, p10 to show file paths
 alias scope='cscope -CR -p10'
 
 # Quickly load bashrc
-alias gogo='source ~/.bashrc'
+alias gogo='clear && source ~/.bashrc'
