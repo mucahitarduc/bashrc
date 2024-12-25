@@ -1,0 +1,6 @@
+Clone this repository to home page of user
+
+Add the line below at the end of the .bashrc file
+
+
+cd ~/bashrc && source .bashrc && cd -
