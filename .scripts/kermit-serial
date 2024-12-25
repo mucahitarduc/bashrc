@@ -1,0 +1,44 @@
+#! /usr/bin/kermit +
+;
+; copy this to ~/bin/kermit-serial and make executable!
+;
+
+.device := /dev/ttyACM0
+.baudrate := 115200
+
+if defined \%1 {
+    if exist \%1 .device := \%1
+    else if exist /dev/\%1 .device := /dev/\%1
+    else if exist /dev/tty\%1 .device := /dev/tty\%1
+    if numeric \%1 .baudrate := \%1
+    else if defined \%2 {
+        if numeric \%2 .baudrate := \%2
+    }
+}
+
+define \%n 0
+while < \%n 10000 {
+;for \%i 1 10000 1 {    
+    if exist \m(device) {
+        set modem type none
+        set line \m(device)
+        set carrier-watch off
+        set speed \m(baudrate)
+        ;set flow rts/cts
+        eightbit
+        set parity none
+        set stop-bits 1
+        ;set terminal newline-mode lf cr
+        ;set terminal linefeed on
+        ;set terminal cr-display crlf
+        set terminal lf-display crlf
+        ;set send linefeed on
+	log session \fbasename(\m(device)).log
+        connect
+        close
+        define \%n 0
+    }
+    msleep 10
+    increment \%n 1
+}
+exit

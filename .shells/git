@@ -30,3 +30,5 @@ alias gbv='git branch -vv'
 # Useful when working on a branch and 
 # want to summarize changes against master
 alias gdmno='git diff master  --name-only'
+
+git config --global --add alias.permission-reset '!git diff -p -R --no-ext-diff --no-color --diff-filter=M | grep -E "^(diff|(old|new) mode)" --color=never | git apply'

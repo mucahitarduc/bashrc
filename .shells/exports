@@ -2,7 +2,7 @@
 # Kirtika B Ruchandani <kirtibr@gmail.com> 
 
 
-export PATH=$HOME/scripts:$HOME/.local/bin:/usr/local/bin:$PATH
+export PATH=$HOME/bashrc/.scripts:$HOME/.local/bin:/usr/local/bin:$PATH
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
 export EDITOR='code' ALTERNATE_EDITOR='nano' VISUAL='code'
 
