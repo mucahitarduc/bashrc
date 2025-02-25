@@ -7,7 +7,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 . $SCRIPT_DIR/.shells/functions
 . $SCRIPT_DIR/.shells/exports
 . $SCRIPT_DIR/.shells/alias
-#. .shells/prompt   # Fancy prompt with time and current working dir
+. $SCRIPT_DIR/.shells/prompt   # Fancy prompt with time and current working dir
 . $SCRIPT_DIR/.shells/git      # Conveniences - Display current branch etc
 
 uptime   # Needs: 'sudo apt-get install lsscsi'
