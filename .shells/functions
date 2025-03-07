@@ -67,7 +67,7 @@ function up()
     local dir=$''
     for i in `seq 1 $1`;
     do
-        dir=$dir+$'../'
+        dir=$dir$'../'
     done;
     cd $dir
 }

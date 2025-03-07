@@ -31,4 +31,6 @@ alias gbv='git branch -vv'
 # want to summarize changes against master
 alias gdmno='git diff master  --name-only'
 
-git config --global --add alias.permission-reset '!git diff -p -R --no-ext-diff --no-color --diff-filter=M | grep -E "^(diff|(old|new) mode)" --color=never | git apply'
+if [ -z "$(git config --global --get alias.permission-reset)" ]; then
+ git config --global --add alias.permission-reset '!git diff -p -R --no-ext-diff --no-color --diff-filter=M | grep -E "^(diff|(old|new) mode)" --color=never | git apply'
+fi

@@ -18,7 +18,7 @@ export smoothgreen="\[\033[0;38;5;42m\]"
 
 function pre_prompt {
         newPWD="${PWD}"
-        user="whoami"
+        user=$(whoami)
         host=$(echo -n $HOSTNAME | sed -e "s/[\.].*//")
         datenow=$(date "+%a, %d %b %y")
         let promptsize=$(echo -n "┌(${PWD})($user@$host ddd., DD mmm YY)┐" \
