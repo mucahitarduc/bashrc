@@ -38,8 +38,11 @@ export HISTCONTROL=ignoreboth:erasedups
 clean_dups
 # Save and reload history after each command finishes
 export PROMPT_COMMAND="history -a; history -c; history -r; $PROMPT_COMMAND"
+if [ "${CONTAINER_ID}" ]; then
+PS1=$red'<${CONTAINER_ID}>'$(echo "$PS1" | sed 's/\\$ $//')$orange'$(parse_git_branch)'$white'$ '
+else
 PS1=$(echo "$PS1" | sed 's/\\$ $//')$orange'$(parse_git_branch)'$white'$ '
-
+fi
 # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
 HISTSIZE=1000000
 HISTFILESIZE=2000000
