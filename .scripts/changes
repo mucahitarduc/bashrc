@@ -1,0 +1,56 @@
+#!/bin/bash
+folder=""
+diffArgs="--quiet"
+
+while test $# -gt 0; do
+  case "${1}" in
+    -r | --revert)
+      revert=1
+    ;;
+    --diff)
+      diffArgs=""
+    ;;
+    --exclude)
+      exclude=$2
+      shift
+    ;;
+    -v | --verbose)
+      verbose=1
+    ;;
+    *)
+      folder=$1
+    ;;
+  esac
+  shift
+done
+
+function execute {
+  if [ "$verbose" ]; then echo $1;fi
+  checkStatusAndRevertIfRequseted $1
+}
+
+function checkStatusAndRevertIfRequseted {
+  cd "${1}/"
+  if [ "$verbose" ]; then git diff $diffArgs; fi
+
+  if ! git diff $diffArgs; then
+      pwd
+      git status --short
+      if [ "${revert}" ]; then
+          git reset --hard
+      fi
+  fi
+}
+
+
+export -f execute
+export -f checkStatusAndRevertIfRequseted
+export revert
+export diffArgs
+export exclude
+export verbose
+
+if [ "$verbose" ]; then
+  echo "Revert $revert; diffArgs $diffArgs; exclude $exclude; folder $folder;"
+fi
+find $folder -type l,d -name $exclude -prune -o -name ".git" -exec bash -c 'execute "$0/.."' {} \;
