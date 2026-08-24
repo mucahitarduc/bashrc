@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+############################
+# Defaults
+############################
+DEVICE="/dev/ttyACM0"
+BAUD="115200"
+LOG=1
+FLOW="none"
+LOGDIR="$HOME/kserial_logs"
+ROTATE_MB=100
+SHOULD_EXIT=0
+TMP_KSC=""
+
+############################
+# Utils
+############################
+ts()     { date +"%Y-%m-%d_%H-%M-%S"; }
+ts_log() { date +"[%H:%M:%S]"; }
+logi() { echo -e "\033[1;32m$(ts_log) [INFO]\033[0m $*"; }
+warn() { echo -e "\033[1;33m$(ts_log) [WARN]\033[0m $*"; }
+err()  { echo -e "\033[1;31m$(ts_log) [ERR ]\033[0m $*"; }
+
+############################
+# Cleanup
+############################
+cleanup() {
+    SHOULD_EXIT=1
+    [[ -n "$TMP_KSC" ]] && rm -f "$TMP_KSC"
+    echo ""
+    logi "KSerial çıkıyor."
+    exit 0
+}
+trap cleanup SIGINT SIGTERM
+
+############################
+# Args
+############################
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --no-log) LOG=0 ;;
+        --flow)   FLOW="$2"; shift ;;
+        --baud)   BAUD="$2"; shift ;;
+        --logdir) LOGDIR="$2"; shift ;;
+        --rotate) ROTATE_MB="$2"; shift ;;
+        *)
+            if [[ -e "$1" ]]; then
+                DEVICE="$1"
+            elif [[ -e "/dev/$1" ]]; then
+                DEVICE="/dev/$1"
+            else
+                err "Bilinmeyen argüman veya cihaz bulunamadı: $1"
+                exit 1
+            fi
+            ;;
+    esac
+    shift
+done
+
+############################
+# Dependency check
+############################
+command -v kermit >/dev/null 2>&1 || {
+    err "kermit bulunamadı. Yüklemek için: sudo apt install ckermit"
+    exit 1
+}
+
+############################
+# Log dir
+############################
+DEVNAME=$(basename "$DEVICE")
+DEVLOGDIR="$LOGDIR/$DEVNAME"
+mkdir -p "$DEVLOGDIR"
+
+############################
+# Rotate logs
+############################
+rotate_logs() {
+    while IFS= read -r -d '' f; do
+        local size_kb size_mb
+        size_kb=$(du -k "$f" 2>/dev/null | awk '{print $1}')
+        size_mb=$(( size_kb / 1024 ))
+        if (( size_mb >= ROTATE_MB )); then
+            logi "Log rotate: $(basename "$f") (${size_mb} MB)"
+            gzip -f "$f" && logi "Rotated → $(basename "$f").gz"
+        fi
+    done < <(find "$DEVLOGDIR" -maxdepth 1 -name "*.log" -print0 2>/dev/null)
+}
+
+############################
+# Kermit runner
+# Neden foreground + tee yok?
+#   Kermit connect modunda terminal raw mode'a girer.
+#   Pipeline (kermit | tee) kermit'i arka plana alır → terminal kontrolü
+#   kaybolur, ekran bozulur. Bunun yerine kermit'in kendi "log session"
+#   komutu kullanılır: dosyaya yazar, terminal sahipliği korunur.
+#
+# Neden Ctrl+C kermit içinde çalışmaz?
+#   Raw terminal modunda Ctrl+C karakter olarak remote'a iletilir,
+#   SIGINT sinyali üretilmez. Kermit'ten çıkış için Ctrl+\ → Q kullan.
+#   Kermit çıktıktan sonra bash tekrar cooked mode'a döner ve
+#   Ctrl+C ile trap ateşlenir.
+############################
+run_kermit() {
+    TMP_KSC=$(mktemp /tmp/kserial_XXXX.ksc)
+
+    local log_line=""
+    if [[ "$LOG" -eq 1 ]]; then
+        local logfile="$DEVLOGDIR/$(ts).log"
+        log_line="log session $logfile"
+        logi "Log: $logfile"
+    fi
+
+    cat > "$TMP_KSC" <<EOF
+set modem type none
+set line $DEVICE
+set speed $BAUD
+set carrier-watch off
+set parity none
+set stop-bits 1
+set flow-control $FLOW
+set terminal lf-display crlf
+${log_line}
+connect
+EOF
+
+    kermit -y "$TMP_KSC"
+    local rc=$?
+
+    rm -f "$TMP_KSC"
+    TMP_KSC=""
+    return $rc
+}
+
+############################
+# Reconnect prompt
+# Kermit Ctrl+\ Q ile normal çıkınca kullanıcıya sor.
+# Ctrl+C bu prompt sırasında trap'i ateşler → temiz çıkış.
+############################
+ask_reconnect() {
+    echo ""
+    echo -e "\033[1;36m┌─────────────────────────────────────────┐\033[0m"
+    echo -e "\033[1;36m│  Bağlantı kapatıldı.                    │\033[0m"
+    echo -e "\033[1;36m│  [Enter]  → Yeniden bağlan              │\033[0m"
+    echo -e "\033[1;36m│  [Ctrl+C] → Scriptten çık               │\033[0m"
+    echo -e "\033[1;36m└─────────────────────────────────────────┘\033[0m"
+    # read burada bash'in cooked modda beklediği yer:
+    # Ctrl+C → SIGINT → trap cleanup → exit
+    read -r 2>/dev/null || true
+}
+
+############################
+# Main loop
+############################
+logi "KSerial başladı"
+logi "Device=$DEVICE | Baud=$BAUD | Flow=$FLOW | Log=$LOG"
+echo ""
+echo -e "\033[1;33m  KERMİT KISAYOLLARI:\033[0m"
+echo -e "  Ctrl+\\  → Kermit escape (komut moduna geç)"
+echo -e "  Ctrl+\\ Q → Bağlantıyı kes (scriptte kal)"
+echo -e "  Ctrl+\\ Q ardından Ctrl+C → Scriptten tamamen çık"
+echo -e "  Bağlantı dışındayken Ctrl+C → Scriptten çık"
+echo ""
+
+while [[ "$SHOULD_EXIT" -eq 0 ]]; do
+    if [[ ! -e "$DEVICE" ]]; then
+        warn "Cihaz bulunamadı: $DEVICE — bekleniyor... (Ctrl+C ile çık)"
+        sleep 1
+        continue
+    fi
+
+    [[ "$LOG" -eq 1 ]] && rotate_logs
+
+    logi "Bağlanıyor: $DEVICE @ $BAUD"
+
+    kermit_rc=0
+    run_kermit || kermit_rc=$?
+
+    # Trap ateşlendiyse döngüden çık
+    [[ "$SHOULD_EXIT" -eq 1 ]] && break
+
+    if [[ "$kermit_rc" -eq 0 ]]; then
+        # Kullanıcı Ctrl+\ Q ile normal çıktı → sor
+        ask_reconnect
+        # Eğer Ctrl+C ile çıkılmadıysa yeniden bağlan
+        [[ "$SHOULD_EXIT" -eq 1 ]] && break
+        logi "Yeniden bağlanıyor..."
+    else
+        # Kermit hata ile çıktı → cihaz koptu, otomatik reconnect
+        warn "Bağlantı koptu (rc=$kermit_rc), yeniden bağlanıyor..."
+        sleep 1
+    fi
+done

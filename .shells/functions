@@ -89,3 +89,67 @@ waitfor() {
   shift
   "$@"
 }
+
+
+kill_match () {
+    auto_yes=false
+
+    # Check for -y flag
+    echo $1
+    if [ $1 = "-y" ]; then
+        auto_yes=true
+        shift   # remove -y from args
+        echo $1
+    fi
+
+    if [ -z "$1" ]; then
+        echo "Usage: kill_match [-y] <text>"
+        return 1
+    fi
+
+    pids=$(pgrep -f "$1")
+
+    if [ -z "$pids" ]; then
+        echo "No processes found matching: $1"
+        return 0
+    fi
+
+    for pid in $pids; do
+        line=$(ps -p "$pid" -o pid,ppid,user,cmd --no-headers)
+	if ! [ -z "$line" ]; then
+            echo "Found: $line"
+
+            if [ "$auto_yes" = true ]; then
+                ans="y"
+            else
+                read -p "Kill this process? (y/n) " ans;
+            fi
+
+            if [ "$ans" = "y" ]; then
+                kill -9 "$pid"
+                echo "Killed PID $pid"
+            else
+                echo "Skipped PID $pid"
+            fi
+        fi
+    done
+}
+
+dedup_history() {
+    local hist="${HISTFILE:-$HOME/.bash_history}"
+    local tmp
+
+    tmp=$(mktemp "${hist}.XXXXXX") || return 1
+
+    awk '
+    {
+        line[NR] = $0
+        last[$0] = NR
+    }
+    END {
+        for (i = 1; i <= NR; i++)
+            if (last[line[i]] == i)
+                print line[i]
+    }
+    ' "$hist" > "$tmp" && mv "$tmp" "$hist"
+}
